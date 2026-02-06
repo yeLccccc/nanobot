@@ -31,15 +31,21 @@ class LiteLLMProvider(LLMProvider):
             (api_key and api_key.startswith("sk-or-")) or
             (api_base and "openrouter" in api_base)
         )
-        
+
+        # Detect SiliconFlow by api_base
+        self.is_siliconflow = bool(api_base and "siliconflow" in api_base)
+
         # Track if using custom endpoint (vLLM, etc.)
-        self.is_vllm = bool(api_base) and not self.is_openrouter
+        self.is_vllm = bool(api_base) and not self.is_openrouter and not self.is_siliconflow
         
         # Configure LiteLLM based on provider
         if api_key:
             if self.is_openrouter:
                 # OpenRouter mode - set key
                 os.environ["OPENROUTER_API_KEY"] = api_key
+            elif self.is_siliconflow:
+                # SiliconFlow - uses OpenAI-compatible API
+                os.environ["OPENAI_API_KEY"] = api_key
             elif self.is_vllm:
                 # vLLM/custom endpoint - uses OpenAI-compatible API
                 os.environ["OPENAI_API_KEY"] = api_key
@@ -98,6 +104,11 @@ class LiteLLMProvider(LLMProvider):
         ):
             model = f"zai/{model}"
         
+        # For SiliconFlow, use openai/ prefix for OpenAI-compatible API
+        if self.is_siliconflow:
+            if not model.startswith("openai/"):
+                model = f"openai/{model}"
+
         # For vLLM, use hosted_vllm/ prefix per LiteLLM docs
         # Convert openai/ prefix to hosted_vllm/ if user specified it
         if self.is_vllm:

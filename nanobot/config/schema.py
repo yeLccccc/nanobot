@@ -67,6 +67,7 @@ class ProvidersConfig(BaseModel):
     zhipu: ProviderConfig = Field(default_factory=ProviderConfig)
     vllm: ProviderConfig = Field(default_factory=ProviderConfig)
     gemini: ProviderConfig = Field(default_factory=ProviderConfig)
+    siliconflow: ProviderConfig = Field(default_factory=ProviderConfig)
 
 
 class GatewayConfig(BaseModel):
@@ -112,8 +113,9 @@ class Config(BaseSettings):
         return Path(self.agents.defaults.workspace).expanduser()
     
     def get_api_key(self) -> str | None:
-        """Get API key in priority order: OpenRouter > DeepSeek > Anthropic > OpenAI > Gemini > Zhipu > Groq > vLLM."""
+        """Get API key in priority order: SiliconFlow > OpenRouter > DeepSeek > Anthropic > OpenAI > Gemini > Zhipu > Groq > vLLM."""
         return (
+            self.providers.siliconflow.api_key or
             self.providers.openrouter.api_key or
             self.providers.deepseek.api_key or
             self.providers.anthropic.api_key or
@@ -126,7 +128,9 @@ class Config(BaseSettings):
         )
     
     def get_api_base(self) -> str | None:
-        """Get API base URL if using OpenRouter, Zhipu or vLLM."""
+        """Get API base URL if using SiliconFlow, OpenRouter, Zhipu or vLLM."""
+        if self.providers.siliconflow.api_key:
+            return self.providers.siliconflow.api_base or "https://api.siliconflow.cn/v1"
         if self.providers.openrouter.api_key:
             return self.providers.openrouter.api_base or "https://openrouter.ai/api/v1"
         if self.providers.zhipu.api_key:
